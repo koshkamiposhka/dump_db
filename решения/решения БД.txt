@@ -1,0 +1,75 @@
+1. CREATE TABLE customers (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL
+);
+
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    order_date DATE NOT NULL
+);
+
+CREATE TABLE order_items (
+    id SERIAL PRIMARY KEY,
+    order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    product_name VARCHAR(255) NOT NULL,
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    price NUMERIC(10, 2) NOT NULL CHECK (price >= 0)
+);
+
+
+2.INSERT INTO customers (name, email) VALUES
+('Иван Иванов', 'ivan.ivanov@example.com'),
+('Петр Петров', 'petr.petrov@example.com'),
+('Сергей Сергеев', 'sergey.sergeev@example.com');
+
+INSERT INTO orders (customer_id, order_date) VALUES
+(1, '2025-08-01'),  -- заказ Иван Иванов
+(2, '2025-08-02'),  -- заказ Петр Петров
+(1, '2025-08-03');  -- второй заказ Иван Иванов
+
+INSERT INTO order_items (order_id, product_name, quantity, price) VALUES
+(1, 'Товар А', 2, 15000.00),  -- товар с ценой выше 10 000 в заказе 1
+(1, 'Товар Б', 1, 5000.00),
+(2, 'Товар В', 3, 1000.00),
+(3, 'Товар Г', 1, 3000.00),
+(3, 'Товар Д', 5, 600.00);
+
+3.SELECT o.id, o.order_date
+FROM orders o
+JOIN customers c ON o.customer_id = c.id
+WHERE c.name = 'Иван Иванов'
+ORDER BY o.order_date;
+
+4.SELECT product_name, quantity, price
+FROM order_items
+WHERE order_id = 3
+ORDER BY price DESC;
+
+5.SELECT 
+    c.name,
+    SUM(oi.price * oi.quantity) AS total_spent
+FROM customers c
+JOIN orders o ON c.id = o.customer_id
+JOIN order_items oi ON o.id = oi.order_id
+GROUP BY c.id, c.name
+HAVING SUM(oi.price * oi.quantity) > 5000
+ORDER BY total_spent DESC;
+
+
+6.INSERT INTO order_items (order_id, product_name, quantity, price)
+SELECT
+    (1 + (random() * (SELECT MAX(id) FROM orders)))::int AS order_id,
+    'Товар ' || (1 + (random() * 499))::int AS product_name,  -- Товары от 1 до 500
+    (1 + (random() * 9))::int AS quantity,                    -- Количество 1-10
+    round((100 + random() * (100000 - 100))::numeric, 2)      -- Цена от 100 до 100000 с 2 знаками
+FROM generate_series(1, 1000000);
+
+
+7. CREATE INDEX idx_orders_customer_id ON orders(customer_id);
+
+CREATE INDEX idx_order_items_order_id_price ON order_items(order_id, price);
+
+CREATE INDEX idx_order_items_product_name ON order_items(product_name); - удалил, так как он не помогал поиску 
+
