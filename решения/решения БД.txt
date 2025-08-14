@@ -96,22 +96,85 @@ WHERE customer_id = 1;
 
 
 
+9. Транзакция 
+BEGIN;
 
 
+WITH new_order AS (
+    INSERT INTO orders(customer_id, order_date)
+    VALUES (1, CURRENT_DATE)
+    RETURNING id
+)
+
+INSERT INTO order_items(order_id, product_name, quantity, price)
+SELECT id, 'Товар 1', 2, 100 FROM new_order
+UNION ALL
+SELECT id, 'Товар 2', 1, 200 FROM new_order
+UNION ALL
+SELECT id, NULL, 3, 50 FROM new_order;  
+
+COMMIT;
+
+Получаем ошибку 
+ERROR:  null value in column "product_name" of relation "order_items" violates not-null constraint
+Failing row contains (1000040, 16, null, 3, 50.00). 
+
+SQL state: 23502
+Detail: Failing row contains (1000040, 16, null, 3, 50.00).
 
 
+применяем ROLLBACK;
+ROLLBACK
+
+Query returned successfully in 30 msec.
 
 
+Проверяем все ли откатилось
+
+SELECT o.id AS order_id, o.customer_id, o.order_date,
+       i.product_name, i.quantity, i.price
+FROM orders o
+LEFT JOIN order_items i ON o.id = i.order_id
+WHERE o.order_date = CURRENT_DATE
+ORDER BY o.id DESC;
 
 
+15	1	"2025-08-14"	"Товар 1"	2	100.00
+15	1	"2025-08-14"	"Товар 2"	1	200.00
+15	1	"2025-08-14"	"Товар 3"	3	50.00
+12	1	"2025-08-14"	"Товар 1"	2	100.00
+12	1	"2025-08-14"	"Товар 2"	1	200.00
+12	1	"2025-08-14"	"Товар 3"	3	50.00
 
 
+BEGIN;
 
 
+WITH new_order AS (
+    INSERT INTO orders(customer_id, order_date)
+    VALUES (1, CURRENT_DATE)
+    RETURNING id
+)
+
+INSERT INTO order_items(order_id, product_name, quantity, price)
+SELECT id, 'Товар 1', 2, 100 FROM new_order
+UNION ALL
+SELECT id, 'Товар 2', 1, 200 FROM new_order
+UNION ALL
+SELECT id, 'Товар 3', 3, 50 FROM new_order;  
+
+COMMIT;
 
 
-
-
+17	1	"2025-08-14"	"Товар 1"	2	100.00
+17	1	"2025-08-14"	"Товар 2"	1	200.00
+17	1	"2025-08-14"	"Товар 3"	3	50.00
+15	1	"2025-08-14"	"Товар 1"	2	100.00
+15	1	"2025-08-14"	"Товар 2"	1	200.00
+15	1	"2025-08-14"	"Товар 3"	3	50.00
+12	1	"2025-08-14"	"Товар 1"	2	100.00
+12	1	"2025-08-14"	"Товар 2"	1	200.00
+12	1	"2025-08-14"	"Товар 3"	3	50.00
 
 
 
